@@ -1,0 +1,59 @@
+{
+  "machine": {
+    "states": [
+      {
+        "id": "q_toggle_to_one",
+        "name": "Toggle Cell 0 to 1"
+      },
+      {
+        "id": "q_return_one",
+        "name": "Step Back to Cell 0"
+      },
+      {
+        "id": "q_toggle_to_zero",
+        "name": "Toggle Cell 0 to 0"
+      },
+      {
+        "id": "q_return_zero",
+        "name": "Step Back to Cell 0"
+      }
+    ],
+    "input_alphabet": ["0", "1"],
+    "tape_alphabet": ["0", "1", "□"],
+    "blank_symbol": "□",
+    "start_state": "q_toggle_to_one",
+    "final_states": [],
+    "transitions": [
+      {
+        "from_state": "q_toggle_to_one",
+        "read": "0",
+        "to_state": "q_return_one",
+        "write": "1",
+        "move": "R"
+      },
+      {
+        "from_state": "q_return_one",
+        "read": "□",
+        "to_state": "q_toggle_to_zero",
+        "write": "□",
+        "move": "L"
+      },
+      {
+        "from_state": "q_toggle_to_zero",
+        "read": "1",
+        "to_state": "q_return_zero",
+        "write": "0",
+        "move": "R"
+      },
+      {
+        "from_state": "q_return_zero",
+        "read": "□",
+        "to_state": "q_toggle_to_one",
+        "write": "□",
+        "move": "L"
+      }
+    ]
+  },
+  "input": "0",
+  "step_limit": 100
+}
