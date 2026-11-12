@@ -1,0 +1,352 @@
+{
+  "run_id": "pilot",
+  "budgets_evaluated": [
+    50,
+    200,
+    1000
+  ],
+  "by_budget": {
+    "50": {
+      "sample_count": 166,
+      "balanced_accuracy": 0.993,
+      "macro_f1": 0.9756,
+      "precision": 0.92,
+      "recall": 1.0,
+      "confusion_matrix": [
+        [
+          141,
+          2
+        ],
+        [
+          0,
+          23
+        ]
+      ],
+      "class_balance": [
+        143,
+        23
+      ],
+      "model_id": "dt_depth8_static_plus_prefix_50"
+    },
+    "200": {
+      "sample_count": 166,
+      "balanced_accuracy": 0.9689,
+      "macro_f1": 0.967,
+      "precision": 0.9492,
+      "recall": 0.9655,
+      "confusion_matrix": [
+        [
+          105,
+          3
+        ],
+        [
+          2,
+          56
+        ]
+      ],
+      "class_balance": [
+        108,
+        58
+      ],
+      "model_id": "rf_100_d8_static_200"
+    },
+    "1000": {
+      "sample_count": 166,
+      "balanced_accuracy": 0.9773,
+      "macro_f1": 0.9753,
+      "precision": 0.9577,
+      "recall": 0.9855,
+      "confusion_matrix": [
+        [
+          94,
+          3
+        ],
+        [
+          1,
+          68
+        ]
+      ],
+      "class_balance": [
+        97,
+        69
+      ],
+      "model_id": "rf_100_d8_static_plus_prefix_1000"
+    }
+  },
+  "full_pipeline_vs_active_only": {
+    "50": {
+      "active_only_balanced_accuracy": 0.993,
+      "full_pipeline_balanced_accuracy": 0.993,
+      "full_pipeline_macro_f1": 0.993,
+      "total_test_samples": 285
+    },
+    "200": {
+      "active_only_balanced_accuracy": 0.9689,
+      "full_pipeline_balanced_accuracy": 0.9805,
+      "full_pipeline_macro_f1": 0.9813,
+      "total_test_samples": 285
+    },
+    "1000": {
+      "active_only_balanced_accuracy": 0.9773,
+      "full_pipeline_balanced_accuracy": 0.9819,
+      "full_pipeline_macro_f1": 0.9843,
+      "total_test_samples": 285
+    }
+  },
+  "complexity_breakdown": {
+    "2_states": {
+      "50": {
+        "sample_count": 108,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "confusion_matrix": [
+          [
+            91,
+            0
+          ],
+          [
+            0,
+            17
+          ]
+        ],
+        "class_balance": [
+          91,
+          17
+        ]
+      },
+      "200": {
+        "sample_count": 108,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "confusion_matrix": [
+          [
+            65,
+            0
+          ],
+          [
+            0,
+            43
+          ]
+        ],
+        "class_balance": [
+          65,
+          43
+        ]
+      },
+      "1000": {
+        "sample_count": 108,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "confusion_matrix": [
+          [
+            63,
+            0
+          ],
+          [
+            0,
+            45
+          ]
+        ],
+        "class_balance": [
+          63,
+          45
+        ]
+      }
+    },
+    "3_states": {
+      "50": {
+        "sample_count": 46,
+        "balanced_accuracy": 0.9773,
+        "macro_f1": 0.8217,
+        "precision": 0.5,
+        "recall": 1.0,
+        "confusion_matrix": [
+          [
+            42,
+            2
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "class_balance": [
+          44,
+          2
+        ]
+      },
+      "200": {
+        "sample_count": 46,
+        "balanced_accuracy": 0.8483,
+        "macro_f1": 0.8342,
+        "precision": 0.7,
+        "recall": 0.7778,
+        "confusion_matrix": [
+          [
+            34,
+            3
+          ],
+          [
+            2,
+            7
+          ]
+        ],
+        "class_balance": [
+          37,
+          9
+        ]
+      },
+      "1000": {
+        "sample_count": 46,
+        "balanced_accuracy": 0.9142,
+        "macro_f1": 0.8928,
+        "precision": 0.7857,
+        "recall": 0.9167,
+        "confusion_matrix": [
+          [
+            31,
+            3
+          ],
+          [
+            1,
+            11
+          ]
+        ],
+        "class_balance": [
+          34,
+          12
+        ]
+      }
+    },
+    "4+_states": {
+      "50": {
+        "sample_count": 12,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "confusion_matrix": [
+          [
+            8,
+            0
+          ],
+          [
+            0,
+            4
+          ]
+        ],
+        "class_balance": [
+          8,
+          4
+        ]
+      },
+      "200": {
+        "sample_count": 12,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "confusion_matrix": [
+          [
+            6,
+            0
+          ],
+          [
+            0,
+            6
+          ]
+        ],
+        "class_balance": [
+          6,
+          6
+        ]
+      },
+      "1000": {
+        "sample_count": 12,
+        "note": "Insufficient class diversity in bin"
+      }
+    }
+  },
+  "reserved_family_generalization": {
+    "50": {
+      "sample_count": 261,
+      "balanced_accuracy": 0.7075,
+      "macro_f1": 0.7195,
+      "precision": 0.5676,
+      "recall": 0.4884,
+      "confusion_matrix": [
+        [
+          202,
+          16
+        ],
+        [
+          22,
+          21
+        ]
+      ],
+      "class_balance": [
+        218,
+        43
+      ]
+    },
+    "200": {
+      "sample_count": 261,
+      "balanced_accuracy": 0.6421,
+      "macro_f1": 0.633,
+      "precision": 0.7692,
+      "recall": 0.3636,
+      "confusion_matrix": [
+        [
+          139,
+          12
+        ],
+        [
+          70,
+          40
+        ]
+      ],
+      "class_balance": [
+        151,
+        110
+      ]
+    },
+    "1000": {
+      "sample_count": 261,
+      "balanced_accuracy": 0.8768,
+      "macro_f1": 0.7792,
+      "precision": 1.0,
+      "recall": 0.7537,
+      "confusion_matrix": [
+        [
+          58,
+          0
+        ],
+        [
+          50,
+          153
+        ]
+      ],
+      "class_balance": [
+        58,
+        203
+      ]
+    }
+  },
+  "latency_benchmark": {
+    "exact_simulation_ms": {
+      "median": 0.337,
+      "p95": 0.587
+    },
+    "prediction_pipeline_ms": {
+      "median": 32.358,
+      "p95": 38.359
+    },
+    "speedup_ratio": 0.01
+  }
+}

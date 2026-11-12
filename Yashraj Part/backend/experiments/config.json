@@ -1,0 +1,35 @@
+{
+  "budgets": [
+    50,
+    200,
+    1000
+  ],
+  "prefix_budget": 10,
+  "input_alphabet": [
+    "0",
+    "1"
+  ],
+  "tape_alphabet": [
+    "0",
+    "1",
+    "B"
+  ],
+  "blank_symbol": "B",
+  "inputs_per_machine": 5,
+  "pilot_machines": 500,
+  "final_machines": 2500,
+  "seed": 42,
+  "split_targets": {
+    "train": 0.70,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "reserved_family": "delayed_halts",
+  "family_weights": {
+    "random_tables": 0.25,
+    "scans_rewrites": 0.25,
+    "input_dependent": 0.20,
+    "delayed_halts": 0.15,
+    "long_running": 0.15
+  }
+}
