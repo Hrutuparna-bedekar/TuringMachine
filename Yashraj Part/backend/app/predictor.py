@@ -141,3 +141,41 @@ def predict_bounded(
         "halt_score": round(halt_score, 4),
     }
 
+
+def predict_all_budgets(
+    machine: TuringMachine,
+    input_text: str,
+    models: dict[str, Any],
+    *,
+    enforce_monotonic: bool = True,
+) -> dict[int, dict[str, Any]]:
+    """Predict bounded halting across all supported budgets (50, 200, 1000).
+
+    Runs the 10-step prefix simulation once, then scores each budget. When
+    `enforce_monotonic=True`, enforces non-decreasing scores and binary labels
+    across budgets: P(T <= 50) <= P(T <= 200) <= P(T <= 1000).
+    """
+    ordered_budgets = sorted(SUPPORTED_BUDGETS)
+    results: dict[int, dict[str, Any]] = {
+        b: predict_bounded(machine, input_text, b, models) for b in ordered_budgets
+    }
+
+    if not enforce_monotonic:
+        return results
+
+    if all(r["source"] == "model" for r in results.values()):
+        running_score = 0.0
+        running_pred = False
+        for b in ordered_budgets:
+            r = results[b]
+            score = max(running_score, float(r["halt_score"]))
+            running_score = score
+            pred = running_pred or bool(score >= models["thresholds"][b]) or bool(
+                r["predicted_halted_within_limit"]
+            )
+            running_pred = pred
+            r["halt_score"] = round(score, 4)
+            r["predicted_halted_within_limit"] = pred
+
+    return results
+
