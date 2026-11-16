@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TuringMachine } from '../../types';
 import { validateMachineSemantics } from '../../utils/tape';
-import { Sliders, AlertCircle } from 'lucide-react';
+import { Sliders, AlertCircle, Play, RefreshCw } from 'lucide-react';
 
 interface MachineConfigurationPanelProps {
   machine: TuringMachine;
@@ -11,6 +11,8 @@ interface MachineConfigurationPanelProps {
   onChangeInputText: (val: string) => void;
   onChangeStepLimit: (val: number) => void;
   onLoadExample: () => void;
+  onRunSimulation?: () => void;
+  isSimulating?: boolean;
 }
 
 export const MachineConfigurationPanel: React.FC<MachineConfigurationPanelProps> = ({
@@ -21,6 +23,8 @@ export const MachineConfigurationPanel: React.FC<MachineConfigurationPanelProps>
   onChangeInputText,
   onChangeStepLimit,
   onLoadExample,
+  onRunSimulation,
+  isSimulating,
 }) => {
   const [newTapeSym, setNewTapeSym] = useState('');
   const [newInputSym, setNewInputSym] = useState('');
@@ -126,24 +130,64 @@ export const MachineConfigurationPanel: React.FC<MachineConfigurationPanelProps>
           />
         </div>
         <div className="sim-step-field">
-          <label className="sim-label" htmlFor="step-budget">Step limit</label>
-          <input
-            id="step-budget"
-            type="number"
-            min={0}
-            max={1000}
-            value={stepLimit}
-            onChange={(e) => onChangeStepLimit(Math.max(0, Math.min(1000, Math.trunc(Number(e.target.value) || 0))))}
-            className="input-step-field font-mono"
-          />
+          <div className="step-field-header">
+            <label className="sim-label" htmlFor="step-budget">Safety Step Limit</label>
+            <span className="step-limit-hint">(Max 50,000 steps)</span>
+          </div>
+          <div className="step-input-wrapper">
+            <input
+              id="step-budget"
+              type="number"
+              min={0}
+              max={50000}
+              value={stepLimit}
+              onChange={(e) => onChangeStepLimit(Math.max(0, Math.min(50000, Math.trunc(Number(e.target.value) || 0))))}
+              className="input-step-field font-mono"
+            />
+            <div className="step-preset-pills">
+              {[50, 200, 1000, 5000, 10000].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`step-preset-btn ${stepLimit === preset ? 'active' : ''}`}
+                  onClick={() => onChangeStepLimit(preset)}
+                >
+                  {preset >= 1000 ? `${preset / 1000}k` : preset}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+        {onRunSimulation && (
+          <div className="sim-action-field">
+            <button
+              type="button"
+              className="btn btn-primary run-sim-action-btn"
+              onClick={onRunSimulation}
+              disabled={isSimulating || errorCount > 0}
+              title="Execute deterministic simulation on the current tape input"
+            >
+              {isSimulating ? (
+                <>
+                  <RefreshCw size={15} className="spin" />
+                  <span>Simulating...</span>
+                </>
+              ) : (
+                <>
+                  <Play size={15} />
+                  <span>Run Simulation</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="workspace-example">
         <button type="button" className="btn btn-secondary" onClick={onLoadExample}>
           Load Scan to Blank
         </button>
-        <p>Load the example, then click <strong>Run Simulation</strong>. With input <code>101</code>, it halts at step 4.</p>
+        <p>Load the example machine, then click <strong>Run Simulation</strong> to watch the execution trace live.</p>
       </div>
 
       <details className="machine-settings">

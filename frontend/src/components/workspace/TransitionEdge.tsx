@@ -36,14 +36,14 @@ export const TransitionEdge: React.FC<any> = ({
   let labelY = 0;
 
   if (isSelfLoop) {
-    // Custom SVG path for self loop curving upwards
-    const loopHeight = 55;
-    const loopWidth = 45;
+    // Elegant SVG self-loop curving cleanly above the circular state node
+    const loopHeight = 58;
+    const loopWidth = 40;
     edgePath = `M ${sourceX} ${sourceY} C ${sourceX + loopWidth} ${sourceY - loopHeight}, ${
       sourceX - loopWidth
     } ${sourceY - loopHeight}, ${targetX} ${targetY}`;
     labelX = sourceX;
-    labelY = sourceY - loopHeight - 12;
+    labelY = sourceY - loopHeight - 16;
   } else {
     const [path, lx, ly] = getBezierPath({
       sourceX,
@@ -68,9 +68,10 @@ export const TransitionEdge: React.FC<any> = ({
         markerEnd={markerEnd}
         style={{
           ...style,
-          stroke: isActive ? '#167E7A' : selected ? '#171717' : '#94A3B8',
+          stroke: isActive ? '#f59e0b' : selected ? '#0f172a' : '#64748b',
           strokeWidth: isActive ? 3 : selected ? 2.5 : 1.75,
           transition: 'stroke 0.2s, stroke-width 0.2s',
+          filter: isActive ? 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.6))' : undefined,
         }}
       />
       <EdgeLabelRenderer>
@@ -87,8 +88,8 @@ export const TransitionEdge: React.FC<any> = ({
               <span className="rule-read">{rule.read}</span>
               <span className="rule-arrow">→</span>
               <span className="rule-write">{rule.write}</span>
-              <span className="rule-comma">·</span>
-              <span className={`rule-move move-${rule.move}`}>{rule.move === 'R' ? 'Right' : 'Left'}</span>
+              <span className="rule-comma">,</span>
+              <span className={`rule-move move-${rule.move}`}>{rule.move}</span>
             </div>
           ))}
         </div>
@@ -96,4 +97,3 @@ export const TransitionEdge: React.FC<any> = ({
     </>
   );
 };
-

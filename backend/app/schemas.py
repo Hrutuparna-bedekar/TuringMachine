@@ -186,7 +186,7 @@ class MachineInput(BaseModel):
 
 
 class SimulationRequest(MachineInput):
-    step_limit: int = Field(..., ge=0, le=1000)
+    step_limit: int = Field(..., ge=0, le=50000)
 
 
 class PredictionRequest(MachineInput):

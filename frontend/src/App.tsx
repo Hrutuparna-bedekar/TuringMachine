@@ -35,7 +35,7 @@ export const App: React.FC = () => {
   // 2. Navigation & UI state
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const contentRef = useRef<HTMLElement>(null);
-  const [showBootIntro, setShowBootIntro] = useState<boolean>(true);
+  const [showBootIntro, setShowBootIntro] = useState<boolean>(false);
   const [forceBootIntro, setForceBootIntro] = useState<boolean>(false);
   const [isImportExportOpen, setIsImportExportOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
@@ -43,6 +43,8 @@ export const App: React.FC = () => {
   // 3. Simulation & Trace state
   const [simulationResult, setSimulationResult] = useState<SimulationResponse | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [simulationError, setSimulationError] = useState<string | null>(null);
   const simulationRequest = useRef(0);
@@ -70,10 +72,36 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Central playback animation timer
+  useEffect(() => {
+    if (!isPlaying || !simulationResult) return;
+
+    const totalSteps = simulationResult.trace.length;
+    if (currentStep >= totalSteps) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const intervalMs = Math.max(80, Math.round(600 / playbackSpeed));
+    const timer = setInterval(() => {
+      setCurrentStep((prev) => {
+        const next = prev + 1;
+        if (next >= totalSteps) {
+          setIsPlaying(false);
+          return totalSteps;
+        }
+        return next;
+      });
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [isPlaying, simulationResult, playbackSpeed, currentStep]);
+
   // Invalidate trace when machine, input, or stepLimit changes
   const clearSimulation = useCallback(() => {
     simulationRequest.current += 1;
     setIsSimulating(false);
+    setIsPlaying(false);
     setSimulationResult(null);
     setCurrentStep(0);
     setSimulationError(null);
@@ -94,7 +122,7 @@ export const App: React.FC = () => {
     clearSimulation();
   }, [clearSimulation]);
 
-  // Execute Simulation
+  // Execute Simulation: Unified deterministic pipeline for both initial run and replay
   const handleRunSimulation = async () => {
     const issue = validateMachineSemantics(machine, inputText).find((item) => item.type === 'error');
     if (issue) {
@@ -104,8 +132,10 @@ export const App: React.FC = () => {
     const requestId = ++simulationRequest.current;
     setActiveView('simulation');
     setIsSimulating(true);
+    setIsPlaying(false);
     setSimulationError(null);
     setSimulationResult(null);
+    setCurrentStep(0);
     try {
       const result = await simulateMachine({
         machine,
@@ -114,15 +144,58 @@ export const App: React.FC = () => {
       });
       if (requestId !== simulationRequest.current) return;
       setSimulationResult(result);
-      setCurrentStep(result.trace.length); // Start at final position so outcome is clear
+      setCurrentStep(0);
+      // Automatically begin animated step-by-step playback so user observes execution
+      if (result.trace.length > 0) {
+        setIsPlaying(true);
+      }
     } catch (err) {
       if (requestId !== simulationRequest.current) return;
       setSimulationError(err instanceof Error ? err.message : String(err));
       setSimulationResult(null);
+      setCurrentStep(0);
     } finally {
       if (requestId === simulationRequest.current) setIsSimulating(false);
     }
   };
+
+  // Playback control callbacks
+  const handleTogglePlay = useCallback(() => {
+    if (!simulationResult) return;
+    if (currentStep >= simulationResult.trace.length) {
+      setCurrentStep(0);
+      setIsPlaying(true);
+    } else {
+      setIsPlaying((prev) => !prev);
+    }
+  }, [simulationResult, currentStep]);
+
+  const handleStepChange = useCallback((newStep: number) => {
+    setIsPlaying(false);
+    setCurrentStep(newStep);
+  }, []);
+
+  const handleResetPlayback = useCallback(() => {
+    setIsPlaying(false);
+    setCurrentStep(0);
+  }, []);
+
+  const handleStepBack = useCallback(() => {
+    setIsPlaying(false);
+    setCurrentStep((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const handleStepForward = useCallback(() => {
+    if (!simulationResult) return;
+    setIsPlaying(false);
+    setCurrentStep((prev) => Math.min(simulationResult.trace.length, prev + 1));
+  }, [simulationResult]);
+
+  const handleJumpToEnd = useCallback(() => {
+    if (!simulationResult) return;
+    setIsPlaying(false);
+    setCurrentStep(simulationResult.trace.length);
+  }, [simulationResult]);
 
   // Load Example Machine
   const handleLoadExample = (example: ExampleMachineItem) => {
@@ -243,6 +316,8 @@ export const App: React.FC = () => {
                   onChangeInputText={handleInputChange}
                   onChangeStepLimit={handleStepLimitChange}
                   onLoadExample={() => handleLoadExample(EXAMPLE_MACHINES[0])}
+                  onRunSimulation={handleRunSimulation}
+                  isSimulating={isSimulating}
                 />
                 {simulationError && (
                   <ResultsPanel simulationResult={null} machine={machine} loading={false} error={simulationError} />
@@ -301,7 +376,15 @@ export const App: React.FC = () => {
                     simulationResult={simulationResult}
                     machine={machine}
                     currentStep={currentStep}
-                    onStepChange={setCurrentStep}
+                    isPlaying={isPlaying}
+                    playbackSpeed={playbackSpeed}
+                    onStepChange={handleStepChange}
+                    onTogglePlay={handleTogglePlay}
+                    onSetSpeed={setPlaybackSpeed}
+                    onReset={handleResetPlayback}
+                    onStepBack={handleStepBack}
+                    onStepForward={handleStepForward}
+                    onJumpToEnd={handleJumpToEnd}
                   />
                 </div>
               </div>

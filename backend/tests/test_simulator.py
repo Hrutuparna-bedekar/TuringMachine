@@ -511,3 +511,88 @@ class TestTerminalPriorityAndUnicodeEdgeCases:
         assert res.steps == 513
         assert res.halted_within_limit is True
         assert res.stop_reason == "final_state"
+
+
+class TestExecutionLimitsAndBoundaryHalting:
+    """Verifies precise halting boundaries across 49..51, 199..201, 999..1001, large budgets, and infinite cycles."""
+
+    @staticmethod
+    def _make_halt_at_step_machine():
+        """Creates a machine that scans '1's to the right and halts on 'B'."""
+        return TuringMachine(
+            states=[State(id="q_scan", name="Scanning"), State(id="q_accept", name="Accepted")],
+            input_alphabet=["1"],
+            tape_alphabet=["1", "B"],
+            blank_symbol="B",
+            start_state="q_scan",
+            final_states=["q_accept"],
+            transitions=[
+                Transition(from_state="q_scan", read="1", to_state="q_scan", write="1", move="R"),
+                Transition(from_state="q_scan", read="B", to_state="q_accept", write="B", move="R"),
+            ],
+        )
+
+    @pytest.mark.parametrize("target_steps", [49, 50, 51, 199, 200, 201, 999, 1000, 1001, 2500, 5000])
+    def test_exact_halting_at_boundary_steps(self, target_steps: int):
+        """Machine halts on exactly step target_steps when provided target_steps - 1 '1's followed by blank."""
+        machine = self._make_halt_at_step_machine()
+        # N '1's means N scan steps + 1 blank step to q_accept = N + 1 total steps.
+        # So for target_steps, we provide target_steps - 1 '1's.
+        input_str = "1" * (target_steps - 1)
+        safety_budget = target_steps + 100
+
+        res = simulate(machine, input_text=input_str, step_limit=safety_budget)
+        assert res.steps == target_steps
+        assert res.halted_within_limit is True
+        assert res.stop_reason == "final_state"
+
+    @pytest.mark.parametrize("target_steps", [50, 200, 1000, 2000])
+    def test_safety_limit_cutoff_does_not_misclassify_as_reject(self, target_steps: int):
+        """When budget is strictly less than halting step, engine returns stop_reason='step_limit' without rejection."""
+        machine = self._make_halt_at_step_machine()
+        # Machine needs target_steps transitions, but budget is target_steps - 1
+        input_str = "1" * (target_steps - 1)
+        insufficient_budget = target_steps - 1
+
+        res = simulate(machine, input_text=input_str, step_limit=insufficient_budget)
+        assert res.steps == insufficient_budget
+        assert res.halted_within_limit is False
+        assert res.stop_reason == "step_limit"
+
+    def test_infinite_cycle_reaches_safety_limit(self):
+        """An oscillator loop (q0 -> q1 -> q0) cleanly reaches safety step_limit."""
+        machine = TuringMachine(
+            states=[State(id="q0", name="S0"), State(id="q1", name="S1"), State(id="q_accept", name="Accept")],
+            input_alphabet=["0", "1"],
+            tape_alphabet=["0", "1", "B"],
+            blank_symbol="B",
+            start_state="q0",
+            final_states=["q_accept"],
+            transitions=[
+                Transition(from_state="q0", read="0", to_state="q1", write="0", move="R"),
+                Transition(from_state="q1", read="B", to_state="q0", write="B", move="L"),
+            ],
+        )
+        res = simulate(machine, input_text="0", step_limit=500)
+        assert res.steps == 500
+        assert res.halted_within_limit is False
+        assert res.stop_reason == "step_limit"
+
+    def test_missing_transition_is_distinct_rejection(self):
+        """Machine halts because no transition matches (q0, '1') while q0 is not in final_states."""
+        machine = TuringMachine(
+            states=[State(id="q0", name="Start"), State(id="q_accept", name="Accept")],
+            input_alphabet=["0", "1"],
+            tape_alphabet=["0", "1", "B"],
+            blank_symbol="B",
+            start_state="q0",
+            final_states=["q_accept"],
+            transitions=[
+                Transition(from_state="q0", read="0", to_state="q_accept", write="0", move="R"),
+            ],
+        )
+        # Input '1' has no valid rule from q0
+        res = simulate(machine, input_text="1", step_limit=100)
+        assert res.steps == 0
+        assert res.halted_within_limit is True
+        assert res.stop_reason == "missing_transition"

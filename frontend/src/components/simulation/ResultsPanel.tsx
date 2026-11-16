@@ -3,6 +3,7 @@ import { SimulationResponse, TuringMachine } from '../../types';
 import { reconstructTapeAtStep } from '../../utils/tape';
 import {
   CheckCircle2,
+  XCircle,
   Clock,
   Info,
   AlertTriangle,
@@ -15,25 +16,33 @@ interface ResultsPanelProps {
   error: string | null;
 }
 
-const STOP_REASON_DESCRIPTIONS: Record<
-  string,
-  { label: string; explanation: string; variant: 'success' | 'warning' | 'info' }
-> = {
+interface OutcomeMeta {
+  statusTag: 'ACCEPTED' | 'REJECTED' | 'LIMIT REACHED';
+  label: string;
+  explanation: string;
+  variant: 'success' | 'danger' | 'warning';
+}
+
+const OUTCOME_CONFIG: Record<string, OutcomeMeta> = {
   final_state: {
-    label: 'Halted: Reached Final State',
-    explanation: 'The Turing machine entered an accepting terminal state declared in final_states.',
+    statusTag: 'ACCEPTED',
+    label: 'ACCEPTED — Final State Reached',
+    explanation:
+      'The Turing machine accepted the input string. Execution halted because the active state entered the set of declared final accepting states (F).',
     variant: 'success',
   },
   missing_transition: {
-    label: 'Halted: Missing Transition Rule',
+    statusTag: 'REJECTED',
+    label: 'REJECTED — No Transition Defined',
     explanation:
-      'The machine halted because no transition rule matches the current active state and tape symbol. Zero further steps consumed.',
-    variant: 'info',
+      'The Turing machine rejected the input string. Execution halted because no transition rule matches the active state and tape symbol, and the state is not an accepting final state.',
+    variant: 'danger',
   },
   step_limit: {
-    label: 'Step Budget Exhausted (Active)',
+    statusTag: 'LIMIT REACHED',
+    label: 'SAFETY LIMIT REACHED — Timeout',
     explanation:
-      'The machine was still active and able to execute transitions, but the configured finite step budget was reached. (Note: this is not proof that the machine would never halt on an infinite budget).',
+      'The simulation exceeded the configured computational safety step limit while still active and executing transitions. (Note: this is a safety cutoff to prevent runaway loops, not proof that the machine would never halt on an infinite budget — the General Halting Problem is undecidable).',
     variant: 'warning',
   },
 };
@@ -49,7 +58,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
       <div className="results-card loading-state">
         <div className="loading-spinner-circle" />
         <h4 className="results-title">Executing Deterministic Simulation...</h4>
-        <p className="results-desc">Calling FastAPI backend simulation engine (/api/simulate)</p>
+        <p className="results-desc">Calling FastAPI simulation engine with sparse bidirectional tape</p>
       </div>
     );
   }
@@ -63,7 +72,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
         </div>
         <div className="error-detail-box font-mono">{error}</div>
         <p className="results-desc">
-          Check input alphabet constraints, state IDs, or ensure symbols match single Unicode scalar values.
+          Check alphabet symbols, state IDs, or ensure all characters match single Unicode scalar values.
         </p>
       </div>
     );
@@ -77,16 +86,17 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
         </div>
         <h4 className="results-title">Execution Results</h4>
         <p className="results-desc">
-          No simulation executed yet. Define machine transitions and click <strong>Run Simulation</strong> to view execution diagnostics.
+          No simulation executed yet. Configure machine transitions and click <strong>Run Simulation</strong> to compute and replay the trace.
         </p>
       </div>
     );
   }
 
-  const reasonInfo = STOP_REASON_DESCRIPTIONS[simulationResult.stop_reason] || {
+  const outcome = OUTCOME_CONFIG[simulationResult.stop_reason] || {
+    statusTag: simulationResult.halted_within_limit ? 'ACCEPTED' : 'LIMIT REACHED',
     label: simulationResult.stop_reason,
-    explanation: 'Simulation stopped.',
-    variant: 'info',
+    explanation: 'Simulation halted.',
+    variant: simulationResult.halted_within_limit ? 'success' : 'warning',
   };
 
   // Compute metrics from trace
@@ -106,39 +116,56 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
       : simulationResult.initial.state;
   const finalStateObj = machine.states.find((s) => s.id === finalStateId);
   const { tapeMap } = reconstructTapeAtStep(
-    simulationResult.initial, simulationResult.trace, simulationResult.steps, machine.blank_symbol
+    simulationResult.initial,
+    simulationResult.trace,
+    simulationResult.steps,
+    machine.blank_symbol
   );
-  const writtenCells = Object.keys(tapeMap).map(Number).filter((position) => tapeMap[position] !== machine.blank_symbol);
-  const first = Math.min(...writtenCells);
-  const last = Math.max(...writtenCells);
+  const writtenCells = Object.keys(tapeMap)
+    .map(Number)
+    .filter((pos) => tapeMap[pos] !== machine.blank_symbol);
+  const first = writtenCells.length ? Math.min(...writtenCells) : 0;
+  const last = writtenCells.length ? Math.max(...writtenCells) : 0;
   const tapeOutput = writtenCells.length
     ? Array.from({ length: last - first + 1 }, (_, index) => tapeMap[first + index]).join('')
     : '';
 
   return (
-    <div className={`results-card run-result status-${reasonInfo.variant}`}>
+    <div className={`results-card run-result status-${outcome.variant}`}>
       <div className="results-primary">
         <div className="results-header-banner">
           <div className="banner-icon">
-            {simulationResult.halted_within_limit ? (
-              <CheckCircle2 size={16} className="text-success" />
-            ) : (
-              <Clock size={16} className="text-warning" />
+            {outcome.variant === 'success' && (
+              <CheckCircle2 size={20} className="text-success" />
+            )}
+            {outcome.variant === 'danger' && (
+              <XCircle size={20} className="text-danger" />
+            )}
+            {outcome.variant === 'warning' && (
+              <Clock size={20} className="text-warning" />
             )}
           </div>
           <div className="banner-titles">
-            <h3 className="banner-reason-title">{reasonInfo.label}</h3>
-            <p className="result-stop-summary">Step {simulationResult.steps} · {finalStateObj?.name ?? finalStateId}</p>
+            <div className="banner-badge-row">
+              <span className={`status-pill badge-${outcome.variant}`}>
+                {outcome.statusTag}
+              </span>
+              <span className="result-stop-summary">
+                Step {simulationResult.steps} · Final state: <strong>{finalStateObj?.name ?? finalStateId}</strong>
+              </span>
+            </div>
+            <h3 className="banner-reason-title">{outcome.label}</h3>
           </div>
         </div>
         <div className="tape-output">
-          <h3>{simulationResult.halted_within_limit ? 'Final tape' : 'Tape at the step limit'}</h3>
-          <code aria-label="Tape contents at the end of the run">{tapeOutput || 'Blank tape'}</code>
+          <h3>{simulationResult.halted_within_limit ? 'Final Tape Contents' : 'Tape at Step Limit'}</h3>
+          <code aria-label="Tape contents at the end of the run" className="font-mono">{tapeOutput || '□ (Empty Tape)'}</code>
         </div>
       </div>
-      <details className="run-details">
-        <summary>Run details</summary>
-        <p className="reason-explanation">{reasonInfo.explanation}</p>
+
+      <details className="run-details" open>
+        <summary>Execution Details & Theoretical Analysis</summary>
+        <p className="reason-explanation">{outcome.explanation}</p>
         <div className="results-metrics-grid">
           <div className="metric-box">
             <div className="metric-label">Executed Steps</div>
@@ -171,4 +198,3 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
     </div>
   );
 };
-

@@ -95,11 +95,19 @@ class TestSimulateEndpointValidationErrors:
         assert response.status_code == 422
         assert "input_alphabet" in response.text
 
-    @pytest.mark.parametrize("invalid_limit", [-1, 1001, 25.5, True, "50"])
+    @pytest.mark.parametrize("invalid_limit", [-1, 50001, 25.5, True, "50"])
     def test_invalid_step_limit_rejected(self, valid_machine_payload, invalid_limit):
         valid_machine_payload["step_limit"] = invalid_limit
         response = client.post("/api/simulate", json=valid_machine_payload)
         assert response.status_code == 422
+
+    @pytest.mark.parametrize("large_limit", [1001, 5000, 10000])
+    def test_large_step_limit_accepted_via_api(self, valid_machine_payload, large_limit):
+        valid_machine_payload["step_limit"] = large_limit
+        response = client.post("/api/simulate", json=valid_machine_payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["halted_within_limit"] is True
 
     def test_step_limit_zero_accepted_via_api(self, valid_machine_payload):
         valid_machine_payload["step_limit"] = 0

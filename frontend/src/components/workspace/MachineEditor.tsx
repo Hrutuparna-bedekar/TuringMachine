@@ -238,14 +238,14 @@ export const MachineEditor: React.FC<MachineEditorProps> = ({
         id: `e-${key}`,
         source,
         target,
-        sourceHandle: isSelfLoop ? 'source-bottom' : 'source-right',
+        sourceHandle: isSelfLoop ? 'target-top' : 'source-right',
         targetHandle: isSelfLoop ? 'target-top' : 'target-left',
         type: 'transitionEdge',
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          width: 16,
-          height: 16,
-          color: isActive ? '#167E7A' : '#77756F',
+          width: 14,
+          height: 14,
+          color: isActive ? '#f59e0b' : '#64748b',
         },
         data: {
           rules: item.rules,

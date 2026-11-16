@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   SimulationResponse,
   TuringMachine,
@@ -17,40 +17,38 @@ import {
   Navigation,
 } from 'lucide-react';
 
-interface TapePlayerProps {
+export interface TapePlayerProps {
   simulationResult: SimulationResponse | null;
   machine: TuringMachine;
   currentStep: number;
+  isPlaying: boolean;
+  playbackSpeed: number;
   onStepChange: (step: number) => void;
+  onTogglePlay: () => void;
+  onSetSpeed: (speed: number) => void;
+  onReset: () => void;
+  onStepBack: () => void;
+  onStepForward: () => void;
+  onJumpToEnd: () => void;
 }
 
 export const TapePlayer: React.FC<TapePlayerProps> = ({
   simulationResult,
   machine,
   currentStep,
+  isPlaying,
+  playbackSpeed,
   onStepChange,
+  onTogglePlay,
+  onSetSpeed,
+  onReset,
+  onStepBack,
+  onStepForward,
+  onJumpToEnd,
 }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1); // 1 step per sec, 2x, etc.
   const [tapeWindowOffset, setTapeWindowOffset] = useState<number>(0);
 
   const totalSteps = simulationResult?.trace?.length || 0;
-
-  // Auto-play interval effect
-  useEffect(() => {
-    if (!isPlaying || !simulationResult) return;
-
-    const intervalMs = Math.max(100, Math.round(750 / playbackSpeed));
-    const interval = setInterval(() => {
-      if (currentStep >= totalSteps) {
-        setIsPlaying(false);
-      } else {
-        onStepChange(currentStep + 1);
-      }
-    }, intervalMs);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, simulationResult, playbackSpeed, totalSteps, currentStep, onStepChange]);
 
   if (!simulationResult) {
     return (
@@ -83,36 +81,10 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
     cellPositions.push(p);
   }
 
-  const handleReset = () => {
-    setIsPlaying(false);
-    onStepChange(0);
-  };
-
-  const handleStepBack = () => {
-    setIsPlaying(false);
-    onStepChange(Math.max(0, currentStep - 1));
-  };
-
-  const handleStepForward = () => {
-    setIsPlaying(false);
-    onStepChange(Math.min(totalSteps, currentStep + 1));
-  };
-
-  const handleJumpToEnd = () => {
-    setIsPlaying(false);
-    onStepChange(totalSteps);
-  };
-
-  const togglePlay = () => {
-    if (currentStep >= totalSteps) {
-      onStepChange(0);
-      setIsPlaying(true);
-    } else {
-      setIsPlaying(!isPlaying);
-    }
-  };
-
   const currentStateObj = machine.states.find((s) => s.id === tapeState.state);
+  const nextEvent = currentStep < totalSteps ? simulationResult.trace[currentStep] : null;
+  const currentScannedSym =
+    tapeState.tapeMap[tapeState.head] !== undefined ? tapeState.tapeMap[tapeState.head] : machine.blank_symbol;
 
   return (
     <div className="tape-player-container">
@@ -135,12 +107,12 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
         <div className="speed-selector">
           <Clock size={13} />
           <span>Speed:</span>
-          {[0.5, 1, 2, 5].map((spd) => (
+          {[0.5, 1, 2, 5, 10].map((spd) => (
             <button
               key={spd}
               type="button"
               className={`speed-btn ${playbackSpeed === spd ? 'active' : ''}`}
-              onClick={() => setPlaybackSpeed(spd)}
+              onClick={() => onSetSpeed(spd)}
             >
               {spd}x
             </button>
@@ -201,22 +173,53 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
         </div>
       </div>
 
-      {/* Last Executed Rule Banner */}
+      {/* Informative Execution & Decision Banner */}
       <div className="tape-execution-rule-banner font-mono">
-        {tapeState.lastEvent ? (
-          <div className="rule-event-display">
-            <span className="event-label">Last move</span>
-            <span className="event-detail">
-              Read {tapeState.lastEvent.symbol_before} → write {tapeState.lastEvent.symbol_after} ·{' '}
-              {tapeState.lastEvent.head_after > tapeState.lastEvent.head_before ? 'Right' : 'Left'}
-            </span>
-          </div>
-        ) : (
-          <div className="rule-event-display text-muted">
-            <span>Tape before the first step</span>
-          </div>
-        )}
+        <div className="execution-banner-main">
+          {tapeState.lastEvent ? (
+            <div className="rule-event-display">
+              <span className="event-label">Last Transition (Step {currentStep}):</span>
+              <span className="event-detail">
+                δ({tapeState.lastEvent.state_before}, &apos;{tapeState.lastEvent.symbol_before}&apos;) → (
+                {tapeState.lastEvent.state_after}, &apos;{tapeState.lastEvent.symbol_after}&apos;,{' '}
+                {tapeState.lastEvent.head_after > tapeState.lastEvent.head_before ? 'R' : 'L'})
+              </span>
+              <span className="event-explanation">
+                · Wrote &apos;{tapeState.lastEvent.symbol_after}&apos; at cell {tapeState.lastEvent.head_before}, moved head{' '}
+                {tapeState.lastEvent.head_after > tapeState.lastEvent.head_before ? 'Right' : 'Left'} to cell{' '}
+                {tapeState.lastEvent.head_after}
+              </span>
+            </div>
+          ) : (
+            <div className="rule-event-display text-muted">
+              <span className="event-label">Initial State:</span>
+              <span>
+                Machine ready at start state {machine.start_state}, head at cell 0 scanning &apos;{currentScannedSym}&apos;
+              </span>
+            </div>
+          )}
 
+          {nextEvent ? (
+            <div className="rule-next-display text-muted">
+              <span className="event-label">Next Action (Step {currentStep + 1}):</span>
+              <span>
+                Scanned symbol is &apos;{currentScannedSym}&apos; in state {tapeState.state} → evaluating rule δ(
+                {nextEvent.state_before}, &apos;{nextEvent.symbol_before}&apos;)
+              </span>
+            </div>
+          ) : (
+            <div className="rule-next-display">
+              <span className="event-label">Computation Status:</span>
+              <span className="terminal-status-text">
+                {simulationResult.stop_reason === 'final_state' && 'Halted: Reached accepting final state (Accepted)'}
+                {simulationResult.stop_reason === 'missing_transition' &&
+                  'Halted: Undefined transition for scanned symbol (Rejected)'}
+                {simulationResult.stop_reason === 'step_limit' &&
+                  `Execution Budget: Safety step limit (${totalSteps} steps) reached`}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Scrubbing Range Slider */}
@@ -227,10 +230,7 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
           min={0}
           max={totalSteps}
           value={currentStep}
-          onChange={(e) => {
-            setIsPlaying(false);
-            onStepChange(Number(e.target.value));
-          }}
+          onChange={(e) => onStepChange(Number(e.target.value))}
           className="tape-range-slider"
         />
       </div>
@@ -240,7 +240,7 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
         <button
           type="button"
           className="playback-btn"
-          onClick={handleReset}
+          onClick={onReset}
           disabled={currentStep === 0}
           title="Reset to step 0"
         >
@@ -251,7 +251,7 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
         <button
           type="button"
           className="playback-btn"
-          onClick={handleStepBack}
+          onClick={onStepBack}
           disabled={currentStep === 0}
           title="Step backward"
         >
@@ -262,9 +262,9 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
         <button
           type="button"
           className="playback-btn btn-play-primary"
-          onClick={togglePlay}
+          onClick={onTogglePlay}
           disabled={totalSteps === 0}
-          title={isPlaying ? 'Pause replay' : 'Play replay'}
+          title={isPlaying ? 'Pause simulation' : currentStep >= totalSteps ? 'Replay simulation from start' : 'Play simulation'}
         >
           {isPlaying ? (
             <>
@@ -282,7 +282,7 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
         <button
           type="button"
           className="playback-btn"
-          onClick={handleStepForward}
+          onClick={onStepForward}
           disabled={currentStep >= totalSteps}
           title="Step forward"
         >
@@ -293,7 +293,7 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
         <button
           type="button"
           className="playback-btn"
-          onClick={handleJumpToEnd}
+          onClick={onJumpToEnd}
           disabled={currentStep >= totalSteps}
           title="Jump to end of trace"
         >
@@ -304,4 +304,3 @@ export const TapePlayer: React.FC<TapePlayerProps> = ({
     </div>
   );
 };
-
